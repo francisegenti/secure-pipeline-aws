@@ -85,6 +85,7 @@ resource "aws_iam_role_policy" "github_actions_deploy_policy" {
         Effect = "Allow"
         Action = [
           "ec2:DescribeVpcs",
+          "ec2:DescribeVpcAttribute",
           "ec2:DescribeSubnets",
           "ec2:DescribeSecurityGroups"
         ]
