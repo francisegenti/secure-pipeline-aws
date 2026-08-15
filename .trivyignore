@@ -16,3 +16,5 @@ CVE-2026-48962   # perl-base (IO::Compress) — no fix available upstream
 CVE-2026-57432   # perl-base — no fix available upstream
 CVE-2026-9538    # perl-base (Archive::Tar) — Debian: fix_deferred
 CVE-2023-45853   # zlib1g — Debian marked will_not_fix (CRITICAL, tracked)
+GHSA-6v7p-g79w-8964   # msgpack — vendored inside pip's internal _vendor dir, not an app dependency, no fix available except pip's own future update
+CVE-2025-47273        # setuptools — bundled via ensurepip for venv bootstrapping, not the actively-used setuptools 84.0.0 already confirmed clean
