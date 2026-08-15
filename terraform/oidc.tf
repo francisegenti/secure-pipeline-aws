@@ -25,7 +25,7 @@ resource "aws_iam_role" "github_actions_deploy" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:francisegenti/secure-pipeline-aws:ref:refs/heads/main"
+            "token.actions.githubusercontent.com:sub" = "repo:francisegenti*/secure-pipeline-aws*:ref:refs/heads/main"
           }
         }
       }
