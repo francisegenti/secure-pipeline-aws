@@ -61,7 +61,9 @@ resource "aws_iam_role_policy" "github_actions_deploy_policy" {
           "ecr:PutImage",
           "ecr:InitiateLayerUpload",
           "ecr:UploadLayerPart",
-          "ecr:CompleteLayerUpload"
+          "ecr:CompleteLayerUpload",
+          "ecr:DescribeRepositories",
+          "ecr:ListTagsForResource"
         ]
         Resource = aws_ecr_repository.secure_api_repo.arn
       },
@@ -71,8 +73,32 @@ resource "aws_iam_role_policy" "github_actions_deploy_policy" {
         Action = [
           "ecs:UpdateService",
           "ecs:DescribeServices",
+          "ecs:DescribeClusters",
           "ecs:DescribeTaskDefinition",
-          "ecs:RegisterTaskDefinition"
+          "ecs:RegisterTaskDefinition",
+          "ecs:ListTagsForResource"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "EC2ReadForVPC"
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeVpcs",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeSecurityGroups"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "IAMReadAndPassRole"
+        Effect = "Allow"
+        Action = [
+          "iam:GetRole",
+          "iam:GetRolePolicy",
+          "iam:GetOpenIDConnectProvider",
+          "iam:ListRolePolicies",
+          "iam:ListAttachedRolePolicies"
         ]
         Resource = "*"
       },
@@ -83,11 +109,20 @@ resource "aws_iam_role_policy" "github_actions_deploy_policy" {
         Resource = aws_iam_role.ecs_task_execution_role.arn
       },
       {
+        Sid    = "LogsRead"
+        Effect = "Allow"
+        Action = [
+          "logs:DescribeLogGroups"
+        ]
+        Resource = "*"
+      },
+      {
         Sid    = "TerraformState"
         Effect = "Allow"
         Action = [
           "s3:GetObject",
           "s3:PutObject",
+          "s3:DeleteObject",
           "s3:ListBucket"
         ]
         Resource = [
