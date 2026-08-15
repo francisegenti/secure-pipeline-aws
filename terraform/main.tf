@@ -1,3 +1,14 @@
+data "aws_vpc" "default" {
+  default = true
+}
+
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
+}
+
 resource "aws_ecr_repository" "secure_api_repo" {
   name                 = var.app_name
   image_tag_mutability = "MUTABLE"
@@ -13,8 +24,17 @@ resource "aws_ecr_repository" "secure_api_repo" {
   }
 }
 
-resource "aws_iam_role" "app_runner_ecr_role" {
-  name = "${var.app_name}-ecr-access-role"
+resource "aws_ecs_cluster" "app_cluster" {
+  name = "${var.app_name}-cluster"
+
+  tags = {
+    Environment = var.environment
+    Project     = "SecurePipeline"
+  }
+}
+
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name = "${var.app_name}-ecs-execution-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -22,7 +42,7 @@ resource "aws_iam_role" "app_runner_ecr_role" {
       {
         Effect = "Allow"
         Principal = {
-          Service = "build.apprunner.amazonaws.com"
+          Service = "ecs-tasks.amazonaws.com"
         }
         Action = "sts:AssumeRole"
       }
@@ -30,34 +50,105 @@ resource "aws_iam_role" "app_runner_ecr_role" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "app_runner_ecr_policy" {
-  role       = aws_iam_role.app_runner_ecr_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess"
+resource "aws_iam_role_policy" "ecs_logs_policy" {
+  name = "${var.app_name}-logs-policy"
+  role = aws_iam_role.ecs_task_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "logs:CreateLogGroup"
+        Resource = "arn:aws:logs:${var.aws_region}:*:log-group:/ecs/${var.app_name}*"
+      }
+    ]
+  })
 }
 
-resource "aws_apprunner_service" "api_service" {
-  service_name = "${var.app_name}-service"
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
 
-  source_configuration {
-    authentication_configuration {
-      access_role_arn = aws_iam_role.app_runner_ecr_role.arn
-    }
+resource "aws_security_group" "ecs_service_sg" {
+  name        = "${var.app_name}-sg"
+  description = "Allow inbound traffic to the Flask app container"
+  vpc_id      = data.aws_vpc.default.id
 
-    image_repository {
-      image_identifier      = "${aws_ecr_repository.secure_api_repo.repository_url}:latest"
-      image_repository_type = "ECR"
-      image_configuration {
-        port = tostring(var.container_port)
-      }
-    }
-    
-    auto_deployments_enabled = true
+  ingress {
+    from_port   = var.container_port
+    to_port     = var.container_port
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   tags = {
     Environment = var.environment
     Project     = "SecurePipeline"
   }
+}
 
-  depends_on = [aws_iam_role_policy_attachment.app_runner_ecr_policy]
+resource "aws_ecs_task_definition" "app_task" {
+  family                   = "${var.app_name}-task"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = "256"
+  memory                   = "512"
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+
+  container_definitions = jsonencode([
+    {
+      name      = var.app_name
+      image     = "${aws_ecr_repository.secure_api_repo.repository_url}:latest"
+      essential = true
+      portMappings = [
+        {
+          containerPort = var.container_port
+          hostPort      = var.container_port
+          protocol      = "tcp"
+        }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/${var.app_name}"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "ecs"
+          "awslogs-create-group"  = "true"
+        }
+      }
+    }
+  ])
+
+  tags = {
+    Environment = var.environment
+    Project     = "SecurePipeline"
+  }
+}
+
+resource "aws_ecs_service" "app_service" {
+  name            = "${var.app_name}-service"
+  cluster         = aws_ecs_cluster.app_cluster.id
+  task_definition = aws_ecs_task_definition.app_task.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = data.aws_subnets.default.ids
+    security_groups  = [aws_security_group.ecs_service_sg.id]
+    assign_public_ip = true
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = "SecurePipeline"
+  }
 }
