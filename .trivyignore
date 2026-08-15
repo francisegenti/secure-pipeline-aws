@@ -1,0 +1,18 @@
+# Debian OS-level CVEs with no available fix as of scan date (2026-08-15).
+# Verified via Debian Security Tracker — no patched package version exists upstream.
+# Re-review this file periodically; remove entries once Debian ships a fix.
+
+CVE-2026-53615   # bsdutils/libblkid/util-linux — no fix available upstream
+CVE-2026-41992   # gzip — Debian: fix_deferred
+CVE-2026-54369   # libacl1 — no fix available upstream
+CVE-2025-69720   # ncurses/libtinfo6 — no fix available upstream
+CVE-2025-7458    # libsqlite3-0 — no fix available upstream (CRITICAL, tracked)
+CVE-2026-13221   # perl-base — no fix available upstream (CRITICAL, tracked)
+CVE-2026-42496   # perl-base (Archive::Tar) — Debian: fix_deferred
+CVE-2026-57433   # perl-base (Storable) — no fix available upstream
+CVE-2026-8376    # perl-base — no fix available upstream
+CVE-2026-42497   # perl-base (Archive::Tar) — Debian: fix_deferred
+CVE-2026-48962   # perl-base (IO::Compress) — no fix available upstream
+CVE-2026-57432   # perl-base — no fix available upstream
+CVE-2026-9538    # perl-base (Archive::Tar) — Debian: fix_deferred
+CVE-2023-45853   # zlib1g — Debian marked will_not_fix (CRITICAL, tracked)
